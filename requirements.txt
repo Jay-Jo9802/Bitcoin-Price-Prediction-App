@@ -6,3 +6,5 @@ joblib
 requests
 matplotlib
 scikit-learn
+pytz
+plotly
