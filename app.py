@@ -67,7 +67,7 @@ page = st.sidebar.selectbox(
 @st.cache_data(ttl=300)
 def get_btc_api(api_key: str):
     try:
-        # url = "https://api.coingecko.com/api/v3/simple/price"
+        url = "https://api.coingecko.com/api/v3/simple/price"
         params = {"ids": "bitcoin", "vs_currencies": "usd"}
         res = requests.get(url, params=params, timeout=5)
         res.raise_for_status()
