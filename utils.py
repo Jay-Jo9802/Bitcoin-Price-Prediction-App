@@ -109,7 +109,7 @@ def predict_harga_dari_logret(harga_awal, logret_pred):
 # ------------------ EDA ------------------
 def eda_summary_harian(df):
     df = df.copy()
-    df['day_name'] = df.index.day_name(locale='English')
+    df['day_name'] = df.index.day_name()  # tanpa 'locale'
     hari_order = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']
     eda = df.groupby('day_name')['Close'].mean().reindex(hari_order)
     fig, ax = plt.subplots()
@@ -121,7 +121,7 @@ def eda_summary_harian(df):
 
 def eda_summary_bulanan(df):
     df = df.copy()
-    df['month_name'] = df.index.month_name(locale='English')
+    df['month_name'] = df.index.month_name()  # tanpa 'locale'
     bulan_order = ['January','February','March','April','May','June','July','August','September','October','November','December']
     eda = df.groupby('month_name')['Close'].mean().reindex(bulan_order)
     fig, ax = plt.subplots()
