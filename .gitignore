@@ -1,0 +1,22 @@
+# === Python cache ===
+__pycache__/
+*.py[cod]
+
+# === Virtual environment ===
+bitcoin3/
+
+# === Editor config folders ===
+.vscode/
+.idea/
+*.swp
+
+# === Mac & Windows junk ===
+.DS_Store
+Thumbs.db
+
+# === Log & temp files ===
+*.log
+*.tmp
+
+# === Jupyter Notebook checkpoints (kalau ada) ===
+.ipynb_checkpoints/
