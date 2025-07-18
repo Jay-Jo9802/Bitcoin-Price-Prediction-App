@@ -64,7 +64,7 @@ page = st.sidebar.selectbox(
 
 
 # Ambil harga BTC dari API
-@st.cache_data(ttl=300)
+@st.cache_data(ttl=600)  # Cache 10 menit
 def get_btc_api(api_key: str):
     try:
         url = "https://api.coingecko.com/api/v3/simple/price"
@@ -95,7 +95,6 @@ def get_btc_api(api_key: str):
         print(f"[Twelve Data Error] {e}")
 
     return None, None, "Unknown"
-
 
 # Fungsi bantu untuk memformat tanggal ke Bahasa Indonesia
 def format_tanggal_indonesia(dt):
@@ -129,16 +128,16 @@ if page == "Beranda":
     Selamat datang di aplikasi prediksi harga penutupan Bitcoin ₿🗠
     """
         """
-Aplikasi ini merupakan sistem prediksi berbasis deep learning yang dirancang untuk membantu pengguna dalam memantau dan memperkirakan harga penutupan Bitcoin (BTC) selama 7 hari ke depan secara otomatis.
+Aplikasi ini merupakan sistem prediksi berbasis deep learning yang dirancang untuk membantu pengguna dalam memantau dan memperkirakan harga penutupan Bitcoin (BTC) selama 7 hari ke depan secara otomatis. 
 
-Dengan memanfaatkan model LSTM (Long Short-Term Memory) dan data historis yang diperoleh dari sumber terpercaya seperti Yahoo Finance dan CoinGecko, aplikasi ini tidak hanya memberikan prediksi harga, tetapi juga menyediakan analisis statistik dan visualisasi untuk mendukung pemahaman terhadap tren pasar.
+Dengan memanfaatkan model LSTM (Long Short-Term Memory) yang dilatih menggunakan data historis dari Yahoo Finance, serta integrasi API dari CoinGecko untuk mendapatkan harga terbaru secara real-time, aplikasi ini tidak hanya menyajikan prediksi harga, tetapi visualisasi yang mendukung pemahaman tren pasar.
 
 Di dalam aplikasi ini, pengguna dapat mengakses empat halaman utama, yaitu:
 
 - **Beranda**: Menyajikan gambaran umum tentang tujuan aplikasi dan fitur-fitur utamanya.
-- **Tentang**: Menjelaskan metodologi yang digunakan, mulai dari proses preprocessing, teknik feature engineering, hingga arsitektur model LSTM yang diterapkan.
+- **Tentang**: Menjelaskan proses pengembangan model, mulai dari pengumpulan dan pembersihan data historis, teknik feature engineering dengan indikator teknikal, hingga pemanfaatan model LSTM dan integrasi API untuk prediksi harga secara real-time.
 - **EDA (Exploratory Data Analysis)**: Memberikan analisis statistik dan visualisasi harga Bitcoin berdasarkan data historis, mencakup pola harian, bulanan, dan tahunan.
-- **Prediksi Harga**: Menampilkan harga BTC terkini dari API CoinGecko, dan memproyeksikan harga 7 hari ke depan berdasarkan output model LSTM.
+- **Prediksi Harga**: Menampilkan proyeksi harga penutupan Bitcoin selama 7 hari ke depan menggunakan model LSTM yang telah dilatih dari data historis, yang kemudian diintegrasikan dengan harga real-time dari API CoinGecko sebagai input aktual untuk menghasilkan prediksi yang relevan dan terkini.
 
 Aplikasi ini bertujuan memberikan gambaran umum mengenai kemungkinan arah pergerakan harga Bitcoin berdasarkan data historis. Namun demikian, prediksi yang dihasilkan bersifat estimatif dan tidak dimaksudkan sebagai acuan utama dalam pengambilan keputusan.
 """
@@ -156,16 +155,16 @@ elif page == "Tentang":
     st.title("Tentang")
     st.markdown(
         """
-Aplikasi ini dikembangkan untuk memberikan gambaran mengenai potensi arah pergerakan harga Bitcoin (BTC) selama tujuh hari ke depan secara otomatis. Dengan menggabungkan model deep learning dan data historis, aplikasi ini menyajikan prediksi harga yang bersifat estimatif dan dapat digunakan sebagai bahan pertimbangan tambahan.
+Aplikasi ini dikembangkan untuk memberikan gambaran mengenai potensi arah pergerakan harga penutupan Bitcoin (BTC) selama tujuh hari ke depan secara otomatis. Dengan menggabungkan model deep learning yang dilatih dari data historis dan integrasi API CoinGecko untuk memperoleh harga terkini, aplikasi ini menyajikan prediksi penutupan harga Bitcoin yang bersifat estimatif.
 
 ---
 ### 📂 Penjelasan Data
 
 Dataset utama berasal dari **Yahoo Finance**, mencakup data harian Bitcoin mulai dari **1 Januari 2015 hingga 11 Juli 2025**. Data disimpan dalam format `.csv`, diperoleh melalui skrip Python, dan dibersihkan secara manual sebelum digunakan.
 
-Dataset terdiri dari **3.847 baris** dan mencakup kolom: `Date`, `Open`, `High`, `Low`, `Close`, dan `Volume`. Namun, hanya kolom **`Close` dan `Volume`** yang digunakan dalam pelatihan karena keduanya paling relevan dalam memprediksi harga.
+Dataset terdiri dari **3.847 baris** dan mencakup kolom: `Date`, `Open`, `High`, `Low`, `Close`, dan `Volume`. Namun, hanya kolom **`Close` dan `Volume`** yang digunakan dalam pelatihan karena keduanya paling relevan dalam memprediksi harga. Untuk keperluan evaluasi, data historis dibagi dengan rasio 80% untuk pelatihan (training) dan 20% untuk pengujian (testing). 
 
-Untuk keperluan evaluasi, data dibagi menggunakan rasio **80% training** dan **20% testing**. Sementara itu, **data real-time dari API CoinGecko** digunakan sebagai input aktual saat model melakukan prediksi terkini.
+Sementara itu, data real-time dari API CoinGecko dimanfaatkan sebagai input aktual saat model melakukan prediksi harga terkini. Penggunaan API ini memungkinkan sistem menghasilkan prediksi harga penutupan Bitcoin secara dinamis tanpa perlu melakukan pelatihan ulang model setiap saat. Proses pelatihan model hanya dilakukan secara berkala, misalnya satu kali dalam sebulan, untuk memperbarui parameter model berdasarkan data terbaru yang tersedia, sehingga menjaga efisiensi komputasi dan tetap relevan dengan kondisi pasar.
 
 ---
 ### 🧠 Penjelasan Model
@@ -287,7 +286,6 @@ elif page == "EDA":
     st.subheader("Volume Transaksi")
     st.line_chart(df_fe["Volume"])
 
-
 # ===========================
 #     PREDIKSI HARGA
 # ===========================
@@ -301,51 +299,60 @@ elif page == "Prediksi Harga":
         "dan ingat bahwa setiap keputusan investasi sepenuhnya menjadi tanggung jawab pribadi."
     )
 
-    # Ambil API key secara aman
+    # Inisialisasi refresh counter
+    if "refresh_count" not in st.session_state:
+        st.session_state.refresh_count = 0
+
+    # Ambil API key
     api_key = get_api_key("TWELVE_API_KEY")
 
-    # Refresh harga
+    # Tombol refresh
     if st.button("🔄 Refresh Harga & Prediksi"):
         harga_btc, waktu_update, sumber_api = get_btc_api(api_key)
+        st.session_state.refresh_count += 1
     else:
         harga_btc, waktu_update, sumber_api = get_btc_api(api_key)
 
     if harga_btc is None or waktu_update is None:
         st.error(
-            "Gagal mengambil harga dari API. Silakan cek koneksi internet atau coba beberapa saat lagi."
+            "❌ Gagal mengambil harga dari API. Silakan cek koneksi internet atau coba beberapa saat lagi."
         )
         st.stop()
 
-    # Tampilkan harga BTC sekarang
+    # 🔘 Info Utama: Harga & Waktu Update
+    st.markdown("### 💰 Harga BTC Saat Ini (USD)")
     st.metric(
-        "💰 Harga BTC Saat Ini (USD)",
-        f"${harga_btc:,.2f}",
-        waktu_update.strftime("%d %B %Y %H:%M:%S WIB"),
+        label="💰 Harga BTC Saat Ini (USD)",
+        value=f"${harga_btc:,.2f}",
+        delta=waktu_update.strftime("%d %B %Y %H:%M:%S WIB (Terakhir Update)")
     )
-    st.caption(f"📡 API saat ini digunakan: **{sumber_api}**")
+    # 🛰️ Info API dan sistem refresh
+    st.caption(f"📡 API: **{sumber_api}**")
+    st.caption("📌 Data diperbarui otomatis setiap **10 menit**")
 
     # Prediksi log-return 7 hari ke depan
     y_pred = model_predict(model, scaler, df_fe, harga_btc)
     hasil_prediksi = predict_harga_dari_logret(harga_btc, y_pred)
 
-    # Tampilkan tabel prediksi
-    st.subheader("📈 Prediksi Harga 7 Hari ke Depan")
+    # Tampilkan hasil prediksi
+    st.subheader("📈 Prediksi Harga BTC 7 Hari ke Depan")
+
     tanggal_prediksi = [
         waktu_update + datetime.timedelta(days=i + 1)
         for i in range(len(hasil_prediksi))
     ]
 
-    tabel_prediksi = pd.DataFrame(
-        {
-            "Tanggal (WIB)": [format_tanggal_indonesia(t) for t in tanggal_prediksi],
-            "Harga Prediksi (USD)": [f"{h:,.2f}" for h in hasil_prediksi],
-        }
-    )
+    tabel_prediksi = pd.DataFrame({
+        "Tanggal (WIB)": [format_tanggal_indonesia(t) for t in tanggal_prediksi],
+        "Harga Prediksi (USD)": [f"{h:,.2f}" for h in hasil_prediksi],
+    })
 
     st.table(tabel_prediksi.set_index("Tanggal (WIB)"))
     st.caption(
-        "⚠️ Prediksi harga hanya bersifat estimasi, bukan saran investasi. Lakukan riset mandiri (DYOR)."
+        "🔎 Hasil prediksi bersifat estimasi dan bukan merupakan saran investasi. "
+        "Selalu lakukan riset mandiri (DYOR)."
     )
+
 
     # Ambil data harga aktual terakhir 14 hari (atau sesuai kebutuhan)
     n_hist = 14
