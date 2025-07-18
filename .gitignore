@@ -5,6 +5,9 @@ __pycache__/
 # === Virtual environment ===
 bitcoin3/
 
+# === Secret Keys ===
+.env
+
 # === Editor config folders ===
 .vscode/
 .idea/
@@ -20,3 +23,7 @@ Thumbs.db
 
 # === Jupyter Notebook checkpoints (kalau ada) ===
 .ipynb_checkpoints/
+
+# .api key
+.streamlit/secrets.toml
+

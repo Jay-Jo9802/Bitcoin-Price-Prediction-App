@@ -1,4 +1,4 @@
-# app.py
+#
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -6,6 +6,8 @@ import requests
 import datetime
 import joblib
 import pytz
+import os
+from dotenv import load_dotenv
 from tensorflow.keras.models import load_model
 from utils import (
     load_scaler,
@@ -20,6 +22,17 @@ from utils import (
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 import matplotlib.dates as mdates
+
+# Load .env
+load_dotenv()
+
+
+def get_api_key(key_name):
+    try:
+        return st.secrets.get(key_name)
+    except Exception:
+        return os.getenv(key_name)
+
 
 # Zona waktu Indonesia
 wib = pytz.timezone("Asia/Jakarta")
@@ -51,25 +64,54 @@ page = st.sidebar.selectbox(
 
 
 # Ambil harga BTC dari API
-@st.cache_data(ttl=600)
-def get_btc_api():
-    url = "https://api.coingecko.com/api/v3/simple/price"
-    params = {"ids": "bitcoin", "vs_currencies": "usd"}
+@st.cache_data(ttl=300)
+def get_btc_api(api_key: str):
     try:
-        res = requests.get(url, params=params)
+        # url = "https://api.coingecko.com/api/v3/simple/price"
+        params = {"ids": "bitcoin", "vs_currencies": "usd"}
+        res = requests.get(url, params=params, timeout=5)
+        res.raise_for_status()
         data = res.json()
         harga = data["bitcoin"]["usd"]
         waktu = datetime.datetime.now(wib)
-        return harga, waktu
-    except:
-        return None, None
+        return harga, waktu, "CoinGecko"
+    except Exception as e:
+        print(f"[CoinGecko Error] {e}")
+
+    # Fallback ke Twelve Data
+    try:
+        api_key = st.secrets.get("TWELVE_API_KEY", None)
+        url = f"https://api.twelvedata.com/price?symbol=BTC/USD&apikey={api_key}"
+        res = requests.get(url, timeout=5)
+        res.raise_for_status()
+        data = res.json()
+        if "price" in data:
+            harga = float(data["price"])
+            waktu = datetime.datetime.now(wib)
+            return harga, waktu, "Twelve Data"
+        else:
+            print("[Twelve Data] Response tidak mengandung 'price'")
+    except Exception as e:
+        print(f"[Twelve Data Error] {e}")
+
+    return None, None, "Unknown"
+
 
 # Fungsi bantu untuk memformat tanggal ke Bahasa Indonesia
 def format_tanggal_indonesia(dt):
     bulan_indonesia = {
-        1: "Januari", 2: "Februari", 3: "Maret", 4: "April",
-        5: "Mei", 6: "Juni", 7: "Juli", 8: "Agustus",
-        9: "September", 10: "Oktober", 11: "November", 12: "Desember"
+        1: "Januari",
+        2: "Februari",
+        3: "Maret",
+        4: "April",
+        5: "Mei",
+        6: "Juni",
+        7: "Juli",
+        8: "Agustus",
+        9: "September",
+        10: "Oktober",
+        11: "November",
+        12: "Desember",
     }
     return f"{dt.day:02d} {bulan_indonesia[dt.month]} {dt.year}"
 
@@ -79,14 +121,13 @@ def format_tanggal_indonesia(dt):
 # ===========================
 if page == "Beranda":
     st.title("Aplikasi Prediksi Penutupan Harga Bitcoin")
-    
+
     st.image("assets/logo.jpg", width=1000)  # sesuaikan path dan ukuran
 
-    st.markdown("""
+    st.markdown(
+        """
     Selamat datang di aplikasi prediksi harga penutupan Bitcoin ₿🗠
     """
-
-    
         """
 Aplikasi ini merupakan sistem prediksi berbasis deep learning yang dirancang untuk membantu pengguna dalam memantau dan memperkirakan harga penutupan Bitcoin (BTC) selama 7 hari ke depan secara otomatis.
 
@@ -246,38 +287,54 @@ elif page == "EDA":
     st.subheader("Volume Transaksi")
     st.line_chart(df_fe["Volume"])
 
+
 # ===========================
 #     PREDIKSI HARGA
 # ===========================
 elif page == "Prediksi Harga":
-    st.title("Prediksi Pergerakan Penutupan Harga BTC")
+    st.title("📊 Prediksi Pergerakan Penutupan Harga Bitcoin (BTC)")
+
     st.warning(
-        "⚠️ Disclaimer: Prediksi harga Bitcoin yang ditampilkan di bawah ini dihasilkan oleh model kecerdasan buatan (AI) berbasis deep learning. Tidak ada jaminan akurasi sepenuhnya, dan harga dapat berubah secara dinamis karena banyak faktor eksternal. Selalu lakukan riset mandiri (DYOR), konsultasi dengan perencana keuangan atau pakar investasi jika diperlukan, dan ingat bahwa setiap keputusan investasi sepenuhnya menjadi tanggung jawab pribadi."
+        "⚠️ Disclaimer: Prediksi harga Bitcoin yang ditampilkan di bawah ini dihasilkan oleh model kecerdasan buatan (AI) berbasis deep learning. "
+        "Tidak ada jaminan akurasi sepenuhnya, dan harga dapat berubah secara dinamis karena banyak faktor eksternal. "
+        "Selalu lakukan riset mandiri (DYOR), konsultasi dengan perencana keuangan atau pakar investasi jika diperlukan, "
+        "dan ingat bahwa setiap keputusan investasi sepenuhnya menjadi tanggung jawab pribadi."
     )
+
+    # Ambil API key secara aman
+    api_key = get_api_key("TWELVE_API_KEY")
+
+    # Refresh harga
     if st.button("🔄 Refresh Harga & Prediksi"):
-        harga_btc, waktu_update = get_btc_api()
+        harga_btc, waktu_update, sumber_api = get_btc_api(api_key)
     else:
-        harga_btc, waktu_update = get_btc_api()
+        harga_btc, waktu_update, sumber_api = get_btc_api(api_key)
+
     if harga_btc is None or waktu_update is None:
         st.error(
             "Gagal mengambil harga dari API. Silakan cek koneksi internet atau coba beberapa saat lagi."
         )
         st.stop()
+
+    # Tampilkan harga BTC sekarang
     st.metric(
-        "Harga BTC Saat Ini (USD)",
+        "💰 Harga BTC Saat Ini (USD)",
         f"${harga_btc:,.2f}",
         waktu_update.strftime("%d %B %Y %H:%M:%S WIB"),
     )
-    # Prediksi harga 7 hari ke depan
+    st.caption(f"📡 API saat ini digunakan: **{sumber_api}**")
+
+    # Prediksi log-return 7 hari ke depan
     y_pred = model_predict(model, scaler, df_fe, harga_btc)
     hasil_prediksi = predict_harga_dari_logret(harga_btc, y_pred)
+
+    # Tampilkan tabel prediksi
     st.subheader("📈 Prediksi Harga 7 Hari ke Depan")
     tanggal_prediksi = [
         waktu_update + datetime.timedelta(days=i + 1)
         for i in range(len(hasil_prediksi))
     ]
 
-    # Buat DataFrame prediksi tanpa kolom index
     tabel_prediksi = pd.DataFrame(
         {
             "Tanggal (WIB)": [format_tanggal_indonesia(t) for t in tanggal_prediksi],
@@ -285,12 +342,7 @@ elif page == "Prediksi Harga":
         }
     )
 
-    # Reset index dan hilangkan kolom index
     st.table(tabel_prediksi.set_index("Tanggal (WIB)"))
-
-
-
-    
     st.caption(
         "⚠️ Prediksi harga hanya bersifat estimasi, bukan saran investasi. Lakukan riset mandiri (DYOR)."
     )
@@ -360,5 +412,3 @@ elif page == "Prediksi Harga":
     plt.xticks(rotation=30)
     ax.legend()
     st.pyplot(fig)
-
-    
