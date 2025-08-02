@@ -219,19 +219,20 @@ elif page == "Prediksi Harga":
         "dan ingat bahwa setiap keputusan investasi sepenuhnya menjadi tanggung jawab pribadi."
     )
 
-    # Inisialisasi refresh counter
-    if "refresh_count" not in st.session_state:
-        st.session_state.refresh_count = 0
+    # # Inisialisasi refresh counter
+    # if "refresh_count" not in st.session_state:
+    #     st.session_state.refresh_count = 0
 
     # Ambil API key
     api_key = get_api_key("TWELVE_API_KEY")
+    harga_btc, waktu_update, sumber_api = get_btc_api(api_key)
 
-    # Tombol refresh
-    if st.button("\U0001f503 Refresh Harga & Prediksi"):
-        harga_btc, waktu_update, sumber_api = get_btc_api(api_key)
-        st.session_state.refresh_count += 1
-    else:
-        harga_btc, waktu_update, sumber_api = get_btc_api(api_key)
+    # # Tombol refresh
+    # if st.button("\U0001f503 Refresh Harga & Prediksi"):
+    #     harga_btc, waktu_update, sumber_api = get_btc_api(api_key)
+    #     st.session_state.refresh_count += 1
+    # else:
+    #     harga_btc, waktu_update, sumber_api = get_btc_api(api_key)
 
     if harga_btc is None or waktu_update is None:
         st.error(
